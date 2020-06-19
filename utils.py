@@ -1,6 +1,10 @@
 #utils for textile bot!
 import config
+import logging
 from telebot import types
+from SQLbase import SQLbase
+
+
 
 def keyboard(user_id):
 	"""
@@ -37,8 +41,9 @@ def perm_adm(user_id):
 	"""
 	if user_id == config.adm_id_1 or user_id == config.adm_id_2:
 		return 1
-	else 
+	else: 
 		return 0
+
 def perm_store(user_id):
 	"""
 	return 1 if store can get a permission for this bot
@@ -46,8 +51,9 @@ def perm_store(user_id):
 	"""
 	if user_id == config.store_id:
 		return 1
-	else 
+	else: 
 		return 0
+
 def perm_factory(user_id):
 	"""
 	return 1 if factory can get a permission for this bot
@@ -55,9 +61,35 @@ def perm_factory(user_id):
 	"""
 	if user_id == config.factory_id:
 		return 1
-	else 
+	else: 
 		return 0
 
+def add_material(name):
+	"""
+	add material in Material db
+	"""
+	db = SQLbase(config.db)
+	db.add_material(name)
+	db.close()
+	txt = "Вы добавили новый материал с названием: {}".format(name)
+	logging.info("Added material with name: {}".format(name))
+	return txt
+
+def in_kb_order():
+	"""
+	Show inline_kb for user to make a order
+	"""
+	in_kb = types.InlineKeyboardMarkup(row_width = 1)
+	db = SQLbase(config.db)
+	data = db.get_product()
+	db.close()
+	txt = "Выберите один из товаров: "
+	for item in data:
+		button = types.InlineKeyboardButton(text = item[2:], callback_data = str(item[:1]))
+		in_kb.add(button)
+	button = types.InlineKeyboardButton(text = "Произвольный размер", callback_data = str(7))
+	in_kb.add(button)
+	return in_kb, txt
 
 
 
