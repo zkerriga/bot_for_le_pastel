@@ -55,12 +55,11 @@ class SQLbase():
 		with self.connection:
 			row = self.cur.execute("SELECT * FROM Product WHERE id = ?", (id_product,)).fetchone()
 			logging.info("{}".format(row))
-			txt_0 = "Вы создали заявку на производство товара со следующими характеристиками:"
-			txt_1 = "Наименование товара: {}".format(row[1])
-			txt_2 = "Размер товара: {}".format(row[2])
-			txt_3 = "Величина п/м: {}".format(row[3])
-			txt = "{0}\n{1}\n{2}\n{3}\n".format(txt_0, txt_1, txt_2, txt_3)
-			return txt
+			
+			name_prod = row[1]
+			size = row[2]
+			p_m = row[3]
+			return name_prod, size, p_m
 
 	def info_material(self, id_material):
 		"""
@@ -68,9 +67,54 @@ class SQLbase():
 		"""
 		with self.connection:
 			row = self.cur.execute("SELECT * FROM Material WHERE id = ?", (id_material,)).fetchone()
-			logging.info("{}".format(row))
-			txt = "Вид материала: {}".format(row[1])
-			return txt
+			name_material = row[1]
+			return name_material
+
+	def add_order(self, id_product, id_material):
+		"""
+		Add an order in db Order
+		"""
+		status = "request"
+		name_prod, size, p_m = self.info_product(id_product)
+		name_material = self.info_material(id_material)
+		with self.connection:
+			self.cur.execute("INSERT INTO Orders (name_prod, name_material, size, p_m, status) VALUES (?, ?, ?, ?, ?)",\
+												 (name_prod, name_material, size, p_m, status))
+			self.connection.commit()
+
+	def request_orders(self):
+		"""
+		Create list orders
+		"""
+		status = "request"
+		list_orders = []
+		with self.connection:
+			for item in self.cur.execute("SELECT * FROM Orders WHERE status = ?", (status,)):
+				#logging.info("request_orders ITEM:\n{}".format(item))
+				list_orders.append(item)
+		return list_orders
+
+	def info_request(self, order_id):
+		"""
+		Get info about one order from db
+		"""
+		with self.connection:
+			row = self.cur.execute("SELECT * FROM Orders WHERE id = ?", (order_id,)).fetchone()
+			#name_prod = row[1]
+			#name_material = row[2]
+			#size = row[3]
+			#p_m = row[4]
+			#return name_prod, name_material, size, p_m
+			return row
+
+	def to_process(self, order_id):
+		"""
+		change status on process
+		"""
+		process = 'process'
+		with self.connection:
+			self.cur.execute("UPDATE Orders SET status = ? WHERE id = ?", (process, order_id))
+			self.connection.commit()
 
 	def close(self):
 		"""

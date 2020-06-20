@@ -38,7 +38,8 @@ def request(message):
 	#handle permissons for adm, store
 	user_id = message.from_user.id
 	if utils.perm_adm(user_id) == 1 or utils.perm_store(user_id) == 1:
-		pass
+		in_kb, txt = utils.request_orders()
+		bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
 	else:
 		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
 
@@ -98,6 +99,21 @@ def info_order(call):
 	txt = utils.info_order(id_product, id_material)
 	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
 
+@bot.callback_query_handler(lambda call: call.data[:3] == 'adm')
+def end_request(call):
+	"""
+	if 'yes' change a status of order to process
+	if 'no' do nothing
+	"""
+	if len(call.data) > 7:#adm_yes+number
+		logging.info("call.data: \n{}".format(call.data))
+		order_id = int(call.data[7:])
+		logging.info("order_id: \n{}".format(order_id))
+		txt = utils.to_process(order_id)
+		bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+	elif len(call.data) == 6:#adm_no
+		bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = "Заявка не была допущенна на производство")
+
 #call.data is  a id of a poduct from Product db
 @bot.callback_query_handler(lambda call: int(call.data) >= 1 and int(call.data) <= 7)
 def show_material(call):
@@ -107,6 +123,17 @@ def show_material(call):
 	in_kb, txt = utils.in_kb_materials(int(call.data))
 	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt, reply_markup = in_kb)
 
+@bot.callback_query_handler(lambda call: int(call.data) >= 100)
+def decide_adm(call):
+	"""
+	Give a finel qestion before put a product on factory
+	"""
+	order_id = int(int(call.data)/100)
+	in_kb, txt = utils.decide_adm(order_id)
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt, reply_markup = in_kb)
+
+
+
 @bot.message_handler(func = lambda message: True, content_types = ['text'])
 def main(message):
 	"""
@@ -114,7 +141,7 @@ def main(message):
 	"""
 	if message.text == 'Товары в призводстве':
 		process(message)
-	elif message.text == "Созданные товары":
+	elif message.text == "Созданные запросы":
 		request(message)
 	elif message.text == "Добавить материал":
 		add_material(message)
