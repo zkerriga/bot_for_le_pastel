@@ -75,21 +75,65 @@ def add_material(name):
 	logging.info("Added material with name: {}".format(name))
 	return txt
 
-def in_kb_order():
+def in_kb_product():
 	"""
 	Show inline_kb for user to make a order
 	"""
 	in_kb = types.InlineKeyboardMarkup(row_width = 1)
+	#get list of all product from db
 	db = SQLbase(config.db)
 	data = db.get_product()
 	db.close()
 	txt = "Выберите один из товаров: "
 	for item in data:
-		button = types.InlineKeyboardButton(text = item[2:], callback_data = str(item[:1]))
+		#item[2:] - info about product
+		#item[:1] - id of a product
+		#first ' ' is a border between id_product and info_product
+		index = item.index(' ')
+		button = types.InlineKeyboardButton(text = item[(index + 1):], callback_data = str(item[:index]))
 		in_kb.add(button)
 	button = types.InlineKeyboardButton(text = "Произвольный размер", callback_data = str(7))
 	in_kb.add(button)
 	return in_kb, txt
+
+def in_kb_materials(id_product):
+	"""
+	Create inline keyboard of all materials
+	"""
+	in_kb = types.InlineKeyboardMarkup(row_width = 1)
+	#get list of all materials from db
+	db = SQLbase(config.db)
+	materials = db.get_materials()
+	db.close()
+	
+	if materials != 0:
+		txt = "Выберите тип материала из которого сделать ранее выбранный товар:"
+		for item in materials:
+			#item[2:] - name material
+			#item[:1] - id of a material
+			#id_product - picked product by store or abm
+			encode = "info {} {}".format(id_product, item[:1]) 
+			button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
+			in_kb.add(button)
+		return in_kb, txt
+	else:
+		txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
+		return in_kb, txt
+
+def info_order(id_product, id_material):
+	"""
+	Create info about an order
+	"""
+	db = SQLbase(config.db)
+	txt_0 = db.info_product(id_product)
+	txt_1 = db.info_material(id_material)
+	db.close()
+
+	txt = "{}{}".format(txt_0, txt_1)
+	return txt
+
+
+
 
 
 

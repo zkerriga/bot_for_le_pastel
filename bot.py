@@ -4,6 +4,7 @@ import utils
 import telebot
 import logging
 import worker_db
+import re
 
 bot = telebot.TeleBot(config.TOKEN)
 
@@ -77,12 +78,35 @@ def take_order(message):
 	logging.info("take_order, user_id {}".format(user_id))
 	if utils.perm_adm(user_id) == 1 or utils.perm_store(user_id) == 1:
 		logging.info("take_order, user_id {}".format(user_id))
-		in_kb, txt = utils.in_kb_order()
+		in_kb, txt = utils.in_kb_product()
 		bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
 	else:
 		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
 
-	
+
+
+#call.data is  a id of a material from Material db	
+#call.data >= 100 to handle collisions of show_material
+@bot.callback_query_handler(lambda call: call.data[:4] == 'info')
+def info_order(call):
+	"""	
+	Send a message to adm about the order
+	"""
+	id_info = re.findall(r"\d+", call.data)
+	id_product = id_info[0]
+	id_material = id_info[1]
+	txt = utils.info_order(id_product, id_material)
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+
+#call.data is  a id of a poduct from Product db
+@bot.callback_query_handler(lambda call: int(call.data) >= 1 and int(call.data) <= 7)
+def show_material(call):
+	"""
+	Let user pick up a type of a material
+	"""
+	in_kb, txt = utils.in_kb_materials(int(call.data))
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt, reply_markup = in_kb)
+
 @bot.message_handler(func = lambda message: True, content_types = ['text'])
 def main(message):
 	"""
