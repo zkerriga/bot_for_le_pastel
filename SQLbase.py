@@ -82,15 +82,14 @@ class SQLbase():
 												 (name_prod, name_material, size, p_m, status))
 			self.connection.commit()
 
-	def request_orders(self):
+	def list_orders(self, status):
 		"""
-		Create list orders
+		Create list orders with a status
 		"""
-		status = "request"
 		list_orders = []
 		with self.connection:
 			for item in self.cur.execute("SELECT * FROM Orders WHERE status = ?", (status,)):
-				#logging.info("request_orders ITEM:\n{}".format(item))
+				logging.info("request_orders ITEM:\n{}".format(item))
 				list_orders.append(item)
 		return list_orders
 
@@ -115,6 +114,30 @@ class SQLbase():
 		with self.connection:
 			self.cur.execute("UPDATE Orders SET status = ? WHERE id = ?", (process, order_id))
 			self.connection.commit()
+
+	def add_size(self, size):
+		"""
+		add a size in the order db only for unique product 
+		"""
+		name_prod = 'Произвольный размер'
+		
+		with self.connection:
+			self.cur.execute("INSERT INTO Orders (name_prod, name_material, size, p_m, status) VALUES (?, ?, ?, ?, ?)",\
+												 (name_prod, "", size, 0, ""))
+			self.connection.commit()
+
+	def add_p_m(self, p_m):
+		"""
+		add a p_m in the order db only for unique product 
+		"""
+		pass
+
+	def add_material(self, material_id):
+		"""
+		add a name_material in the order db only for unique product 
+		"""
+		status = "request"
+		pass
 
 	def close(self):
 		"""

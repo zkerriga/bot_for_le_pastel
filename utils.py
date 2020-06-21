@@ -155,7 +155,7 @@ def request_orders():
 	Create in_kb of orders with status "request"
 	"""
 	db = SQLbase(config.db)
-	list_orders = db.request_orders()
+	list_orders = db.list_orders("request")
 	db.close()
 	logging.info("request_orders \n{}".format(list_orders))
 	in_kb = types.InlineKeyboardMarkup()
@@ -201,8 +201,66 @@ def to_process(order_id):
 	txt = "{}\n{}".format(txt_0, txt_1)
 	return txt
 
+def in_process():
+	"""
+	Show a message of orders with status process
+	"""
+	db = SQLbase(config.db)
+	list_orders = db.list_orders("process")
+	db.close()
+	txt = "Товар в производстве:\n"
+	for item in list_orders:
+		txt += txt_order(item)
+		txt += "\n"
+	return txt
 
+def txt_size():
+	"""
+	Text to write a unique size of a product
+	"""
+	txt_0 = "Напишите размер произвольного товара"
+	txt_1 = "Пример: 150*180"
+	txt_2 = "Если вы перешли сюда случайно напишите '0'"
+	txt = "{}\n{}\n{}".format(txt_0, txt_1, txt_2)
+	return txt
 
-
-
-
+def check_size(size, index):
+	"""
+	check string size on valid
+	example '280*390'
+	"""
+	txt_0 = ""
+	ziro = "Если Вы хотите отменить создание произвольного размера товара напиште боту '0'"
+	example = "Пример правильного размера: 70*100"
+	again = "Попробуйте ещё раз!"
+	#handle this situation: '280390'
+	if index == None:
+		txt_0 = "Вы забыли использовать символ '*'.\n"
+	#handle this situation: '*390'	
+	elif index == 0:
+		txt_0 = "Вы указали символ '*' в начале размера.\n"
+	#handle this situation: 280*
+	elif size[index + 1:] == '':
+		txt_0 = "Вы не указали величину размера после символа '*'.\n"
+	#handle this situation: 280*390u
+	elif size[index + 1:] == False:
+		txt_0 = "Вы указали не целое число после символа '*'.\n"
+	#handle this situation: 280u*390
+	elif size[index + 1:] == False:
+		txt_0 = "Вы указали не целое число перед символом '*'.\n"
+		
+	#somthing went wrong
+	if txt_0 != "":
+		txt = "{}\n{}\n{}\n{}".format(txt_0, example, ziro, again)
+		return 0, txt
+	#user write size correctly
+	else:
+		db = SQLbase(config.db)
+		db.add_size(size)
+		db.close()
+		txt_0 = "Указанный Вами размер был сохранён."
+		txt_1 = "Теперь напишите погонный метр(п.м.) произвольного товара."
+		txt_2 = "Пример: 4.30"
+		txt_3 = "Используйте '.'! Не верно: 4,30"
+		txt = "{}\n{}\n{}\n{}".format(txt_0, txt_1, txt_2, txt_3)
+		return 1, txt

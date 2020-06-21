@@ -26,7 +26,8 @@ def process(message):
 	user_id = message.from_user.id
 	if utils.perm_adm(user_id) == 1 or utils.perm_store(user_id) == 1 or\
 								utils.perm_factory(user_id) == 1:
-		pass
+		txt = utils.in_process()
+		bot.send_message(message.chat.id, text = txt)
 	else:
 		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
 
@@ -114,8 +115,61 @@ def end_request(call):
 	elif len(call.data) == 6:#adm_no
 		bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = "Заявка не была допущенна на производство")
 
+#if adm or shope pick a create a unique product
+@bot.callback_query_handler(lambda call: int(call.data) == 7)
+def unique_product(call):
+	"""
+	send a message with instruction of unique product
+	"""
+	txt = utils.txt_size()
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+	worker_db.set_state(call.from_user.id, config.States.SIZE.value)
+
+@bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.SIZE.value)
+def write_size(message):
+	"""
+	Adm or shop writing a size of a unique product
+	"""
+	logging.info(message.text)
+	if message.text == "0":
+		bot.send_message(message.chat.id, text = "Вы прекратили заполнять заявку на произвольный размер.")
+		worker_db.set_state(message.chat.id, config.States.START.value)
+		return
+	
+	try:
+		index = message.text.index('*')
+	except:
+		index = None
+	logging.info(index)
+	check, txt = utils.check_size(message.text, index)
+	if check == 0:
+		bot.send_message(message.chat.id, text = txt)
+		return
+	else:
+		bot.send_message(message.chat.id, text = txt)
+		worker_db.set_state(message.chat.id, config.States.P_M.value)
+
+
+@bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.P_M.value)
+def write_p_m(message):
+	"""
+	Adm or shop writing a p_m of a unique product
+	"""
+	try:
+		p_m = float(message.text)
+	except:
+		p_m = None
+
+	if p_m == None:
+		txt = "Вы ввели не правильное число для п.м.! Используйте целое число(Например: 4) или число с точкой (Например: 4.30)"
+		bot.send_message(message.chat.id, text = txt)
+		return
+	else:
+		#Add to db !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!figure out about id of the product
+		worker_db.set_state(message.chat.id, config.States.START.value)
+
 #call.data is  a id of a poduct from Product db
-@bot.callback_query_handler(lambda call: int(call.data) >= 1 and int(call.data) <= 7)
+@bot.callback_query_handler(lambda call: int(call.data) >= 1 and int(call.data) < 7)
 def show_material(call):
 	"""
 	Let user pick up a type of a material
