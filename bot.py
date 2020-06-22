@@ -5,6 +5,7 @@ import telebot
 import logging
 import worker_db
 import re
+from SQLbase import SQLbase
 
 bot = telebot.TeleBot(config.TOKEN)
 
@@ -38,7 +39,7 @@ def request(message):
 	"""
 	#handle permissons for adm, store
 	user_id = message.from_user.id
-	if utils.perm_adm(user_id) == 1 or utils.perm_store(user_id) == 1:
+	if utils.perm_adm(user_id) == 1:# or utils.perm_store(user_id) == 1:
 		in_kb, txt = utils.request_orders()
 		bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
 	else:
@@ -115,15 +116,6 @@ def end_request(call):
 	elif len(call.data) == 6:#adm_no
 		bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = "Заявка не была допущенна на производство")
 
-#if adm or shope pick a create a unique product
-@bot.callback_query_handler(lambda call: int(call.data) == 7)
-def unique_product(call):
-	"""
-	send a message with instruction of unique product
-	"""
-	txt = utils.txt_size()
-	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
-	worker_db.set_state(call.from_user.id, config.States.SIZE.value)
 
 @bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.SIZE.value)
 def write_size(message):
@@ -165,8 +157,43 @@ def write_p_m(message):
 		bot.send_message(message.chat.id, text = txt)
 		return
 	else:
-		#Add to db !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!figure out about id of the product
-		worker_db.set_state(message.chat.id, config.States.START.value)
+		#add_p_m to table Unique_term
+		db = SQLbase(config.db)
+		db.add_item_unique('p_m', p_m)
+		db.close()
+		worker_db.set_state(message.chat.id, config.States.UNIQUE_MATERIAL.value)
+		pick_material(message)
+
+@bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.UNIQUE_MATERIAL.value)
+def pick_material(message):
+	"""
+	user picks a material for a unique order
+	"""
+	#7 - is id of a unique product
+	logging.info("In the UNIQUE_MATERIAL")
+	in_kb, txt = utils.in_kb_materials(7)
+	bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
+	worker_db.set_state(message.chat.id, config.States.START.value)
+
+@bot.callback_query_handler(lambda call: call.data[:6] == 'unique')
+def info_unique_order(call):
+	"""
+	show the user a unique order
+	"""
+	id_info = re.findall(r"\d+", call.data)
+	id_material = id_info[0]
+	txt = utils.add_unique_order(id_material)
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+
+#if adm or shope pick a create a unique product
+@bot.callback_query_handler(lambda call: int(call.data) == 7)
+def unique_product(call):
+	"""
+	send a message with instruction of unique product
+	"""
+	txt = utils.txt_size()
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+	worker_db.set_state(call.from_user.id, config.States.SIZE.value)
 
 #call.data is  a id of a poduct from Product db
 @bot.callback_query_handler(lambda call: int(call.data) >= 1 and int(call.data) < 7)

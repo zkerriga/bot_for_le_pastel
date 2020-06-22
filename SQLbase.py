@@ -11,30 +11,7 @@ class SQLbase():
 		self.connection = sqlite3.connect(database, check_same_thread = False)
 		self.cur = self.connection.cursor()
 
-	def add_material(self, name):
-		"""
-		insert a new position and add a name in material
-		"""
-		with self.connection:
-			self.cur.execute("INSERT INTO Material (name, price) VALUES (?, ?)", (name, 0))
-			self.connection.commit()
-
-	def get_materials(self):
-		"""
-		return a list of all materials
-		"""
-		materials = []
-		with self.connection:
-			for row in self.cur.execute("SELECT * FROM Material"):
-				logging.info("{}".format(row))
-				encode = "{} {}".format(row[0], row[1])
-				materials.append(encode)
-			logging.info("{}".format(materials))
-			if materials == []:
-				return 0
-			else:
-				return materials
-
+	#Podeuct table
 	def get_product(self):
 		"""
 		return a list with product information
@@ -61,6 +38,31 @@ class SQLbase():
 			p_m = row[3]
 			return name_prod, size, p_m
 
+	#Material table
+	def add_material(self, name):
+		"""
+		insert a new position and add a name in material
+		"""
+		with self.connection:
+			self.cur.execute("INSERT INTO Material (name, price) VALUES (?, ?)", (name, 0))
+			self.connection.commit()
+
+	def get_materials(self):
+		"""
+		return a list of all materials
+		"""
+		materials = []
+		with self.connection:
+			for row in self.cur.execute("SELECT * FROM Material"):
+				logging.info("{}".format(row))
+				encode = "{} {}".format(row[0], row[1])
+				materials.append(encode)
+			logging.info("{}".format(materials))
+			if materials == []:
+				return 0
+			else:
+				return materials
+
 	def info_material(self, id_material):
 		"""
 		return a txt about material
@@ -70,6 +72,7 @@ class SQLbase():
 			name_material = row[1]
 			return name_material
 
+	#Orders table
 	def add_order(self, id_product, id_material):
 		"""
 		Add an order in db Order
@@ -115,29 +118,45 @@ class SQLbase():
 			self.cur.execute("UPDATE Orders SET status = ? WHERE id = ?", (process, order_id))
 			self.connection.commit()
 
-	def add_size(self, size):
+	#Unique table
+	def add_item_unique(self, column, value):
 		"""
-		add a size in the order db only for unique product 
+		add a size in the Unique db only for unique product 
+		column - is a size or p_m or material
+		value - is a value of a cloumn
 		"""
-		name_prod = 'Произвольный размер'
-		
 		with self.connection:
-			self.cur.execute("INSERT INTO Orders (name_prod, name_material, size, p_m, status) VALUES (?, ?, ?, ?, ?)",\
-												 (name_prod, "", size, 0, ""))
+			logging.info("is k: {}".format(self.cur.execute("SELECT id FROM Unique_term").fetchone()))
+			if self.cur.execute("SELECT id FROM Unique_term").fetchone() == None:
+				self.cur.execute("INSERT INTO Unique_term (id, size, p_m, name_material) VALUES (?, ?, ?, ?)",\
+													 (1, value, 0, ""))
+			elif self.cur.execute("SELECT id FROM Unique_term").fetchone()[0] == 1:
+				self.cur.execute("UPDATE Unique_term SET {} = ? WHERE id = ?".format(column), (value, 1))
 			self.connection.commit()
 
-	def add_p_m(self, p_m):
+	def info_unique(self):
 		"""
-		add a p_m in the order db only for unique product 
+		get all info about unique order
 		"""
-		pass
+		with self.connection:
+			size = self.cur.execute("SELECT size FROM Unique_term WHERE id = ?", (1,)).fetchone()[0]
+			p_m = self.cur.execute("SELECT p_m FROM Unique_term WHERE id = ?", (1,)).fetchone()[0]
+			name_material = self.cur.execute("SELECT name_material FROM Unique_term WHERE id = ?", (1,)).fetchone()[0]
+		return size, p_m, name_material
 
-	def add_material(self, material_id):
+	def add_unique(self):
 		"""
-		add a name_material in the order db only for unique product 
+		Add unique order in db Order
 		"""
 		status = "request"
-		pass
+		name_prod = "Произвольный размер"
+		size, p_m, name_material = self.info_unique()
+		logging.info("name_prod - {}\nname_materiial - {}\nsize - {}\np_m - {}\nstatus - {}".format(name_prod, name_material, size, p_m, status))
+		with self.connection:
+			self.cur.execute("INSERT INTO Orders (name_prod, name_material, size, p_m, status) VALUES (?, ?, ?, ?, ?)",\
+												 (name_prod, name_material, size, p_m, status))
+			self.connection.commit()
+		return name_prod, size, p_m
 
 	def close(self):
 		"""

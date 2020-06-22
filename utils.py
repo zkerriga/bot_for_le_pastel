@@ -26,7 +26,6 @@ def keyboard(user_id):
 	#keyboard for store
 	elif user_id == config.store_id:
 		kb.add(process)
-		kb.add(request)
 		kb.add(take_order)
 		return kb, txt
 	#keyboard for factory
@@ -105,20 +104,30 @@ def in_kb_materials(id_product):
 	db = SQLbase(config.db)
 	materials = db.get_materials()
 	db.close()
-	
-	if materials != 0:
-		txt = "Выберите тип материала из которого сделать ранее выбранный товар:"
-		for item in materials:
-			#item[2:] - name material
-			#item[:1] - id of a material
-			#id_product - picked product by store or abm
-			encode = "info {} {}".format(id_product, item[:1]) 
-			button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
-			in_kb.add(button)
-		return in_kb, txt
+	if id_product != 7:
+		if materials != 0:
+			txt = "Выберите тип материала из которого сделать ранее выбранный товар:"
+			for item in materials:
+				#item[2:] - name material
+				#item[:1] - id of a material
+				#id_product - picked product by store or abm
+				encode = "info {} {}".format(id_product, item[:1]) 
+				button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
+				in_kb.add(button)
+		else:
+			txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
 	else:
-		txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
-		return in_kb, txt
+		if materials != 0:
+			txt = "Выберите тип материала из которого сделать ранее созданный товар:"
+			for item in materials:
+				#item[2:] - name material
+				#item[:1] - id of a material
+				encode = "unique {}".format(item[:1]) 
+				button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
+				in_kb.add(button)
+		else:
+			txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
+	return in_kb, txt
 
 def info_order(id_product, id_material):
 	"""
@@ -126,7 +135,7 @@ def info_order(id_product, id_material):
 	"""
 	db = SQLbase(config.db)
 	name_prod, size, p_m = db.info_product(id_product)
-	name_matirial = db.info_material(id_material)
+	name_material = db.info_material(id_material)
 	db.add_order(int(id_product), int(id_material))
 	db.close()
 
@@ -135,7 +144,7 @@ def info_order(id_product, id_material):
 	txt_1 = "Наименование товара: {}".format(name_prod)
 	txt_2 = "Размер товара: {}".format(size)
 	txt_3 = "Величина п/м: {}".format(p_m)
-	txt_4 = "Вид материала: {}".format(name_matirial)
+	txt_4 = "Вид материала: {}".format(name_material)
 	txt = "{0}\n{1}\n{2}\n{3}\n{4}".format(txt_0, txt_1, txt_2, txt_3, txt_4)
 	
 	return txt
@@ -147,7 +156,7 @@ def txt_order(item):
 	txt_0 = "{}.{}".format(item[0], item[1])
 	txt_1 = "{}".format(item[2])
 	txt_2 = "{} - {}".format(item[3], item[4])
-	txt = "{}; {}\n{}".format(txt_0, txt_1, txt_2)
+	txt = "{}; {}\n{} п.м.".format(txt_0, txt_1, txt_2)
 	return txt
 
 def request_orders():
@@ -256,7 +265,7 @@ def check_size(size, index):
 	#user write size correctly
 	else:
 		db = SQLbase(config.db)
-		db.add_size(size)
+		db.add_item_unique('size', size)
 		db.close()
 		txt_0 = "Указанный Вами размер был сохранён."
 		txt_1 = "Теперь напишите погонный метр(п.м.) произвольного товара."
@@ -264,3 +273,23 @@ def check_size(size, index):
 		txt_3 = "Используйте '.'! Не верно: 4,30"
 		txt = "{}\n{}\n{}\n{}".format(txt_0, txt_1, txt_2, txt_3)
 		return 1, txt
+
+def add_unique_order(id_material):
+	"""
+	add uniquer order in Order db and create a txt
+	"""
+	db = SQLbase(config.db)
+	name_material = db.info_material(id_material)
+	db.add_item_unique('name_material', name_material)
+	name_prod, size, p_m = db.add_unique()
+	db.close()
+
+	txt_0 = "Вы создали заявку на производство товара со следующими характеристиками:"
+	txt_1 = "Наименование товара: {}".format(name_prod)
+	txt_2 = "Размер товара: {}".format(size)
+	txt_3 = "Величина п/м: {}".format(p_m)
+	txt_4 = "Вид материала: {}".format(name_material)
+	txt = "{0}\n{1}\n{2}\n{3}\n{4}".format(txt_0, txt_1, txt_2, txt_3, txt_4)
+
+	return txt
+
