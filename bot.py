@@ -59,6 +59,19 @@ def add_material(message):
 	else:
 		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
 
+@bot.message_handler(commands = ['shop_order'])
+def shop_order(message):
+	"""
+	Give to shope in_kb with order's which in status 'process'
+	"""
+	#handle permissons for store
+	user_id = message.from_user.id
+	if utils.perm_store(user_id) == 1:
+		in_kb, txt = utils.in_kb_shop()
+		bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
+	else:
+		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
+
 @bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.ADD_MATERIAL.value)
 def get_name_material(message):
 	"""
@@ -175,6 +188,16 @@ def pick_material(message):
 	bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
 	worker_db.set_state(message.chat.id, config.States.START.value)
 
+@bot.callback_query_handler(lambda call: call.data[:4] == 'shop')
+def done_order_shop(call):
+	"""
+	Show message about done product which shop picked before
+	"""
+	id_info = re.findall(r"\d+", call.data)
+	id_order = id_info[0]
+	txt = utils.done_order(id_order)
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+
 @bot.callback_query_handler(lambda call: call.data[:6] == 'unique')
 def info_unique_order(call):
 	"""
@@ -228,6 +251,8 @@ def main(message):
 		add_material(message)
 	elif message.text == "Создать запрос":
 		take_order(message)
+	elif message.text == "Завершить заказ":
+		shop_order(message)
 	
 
 if __name__ == '__main__':

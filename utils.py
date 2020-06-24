@@ -15,6 +15,7 @@ def keyboard(user_id):
 	request = "Созданные запросы"
 	add_material = "Добавить материал"
 	take_order = "Создать запрос"
+	done_order = "Завершить заказ"
 	txt = "Внизу у Вас появится меню"
 	#keyboard for adm
 	if user_id == config.adm_id_1 or config.adm_id_2:
@@ -27,10 +28,14 @@ def keyboard(user_id):
 	elif user_id == config.store_id:
 		kb.add(process)
 		kb.add(take_order)
+		kb.add(done_order)
 		return kb, txt
 	#keyboard for factory
 	elif user_id == config.factory_id:
 		kb.add(process)
+		return kb, txt
+	else:
+		txt = "У Вас нету доступа к этому боту"
 		return kb, txt
 
 def perm_adm(user_id):
@@ -129,6 +134,41 @@ def in_kb_materials(id_product):
 			txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
 	return in_kb, txt
 
+def in_kb_shop():
+	"""
+	Create a in_kb for shop with orders in status 'process' 
+	"""
+	in_kb = types.InlineKeyboardMarkup()
+	db = SQLbase(config.db)
+	list_orders = db.list_orders("process")
+	db.close()
+	txt = "Выберите товар который хотите снять с производства"
+	if list_orders != []:
+		for item in list_orders:
+			txt = txt_order(item)
+			order_id = item[0]
+			button = types.InlineKeyboardButton(text = txt, callback_data = "shop{}".format(order_id))
+			in_kb.add(button)
+	else:
+		txt = "Нету ни одного товара в производстве"
+	return in_kb, txt
+
+def done_order(id_order):
+	"""
+	Update status process -> done in Order's db
+	"""
+	db = SQLbase(config.db)
+	db.done_process(id_order)
+	info_order = db.info_request(id_order)
+	db.close()
+	txt_0 = "Вы убрали с произвоства товар №{}: ".format(info_order[0])
+	txt_1 = "Наименование товара: {}".format(info_order[1])
+	txt_2 = "Вид материала: {}".format(info_order[2])
+	txt_3 = "Размер товара: {}".format(info_order[3])
+	txt_4 = "Величина п/м: {}".format(info_order[4])
+	txt = "{0}\n{1}\n{2}\n{3}\n{4}".format(txt_0, txt_1, txt_2, txt_3, txt_4)
+	return txt
+
 def info_order(id_product, id_material):
 	"""
 	Create info about an order
@@ -142,9 +182,9 @@ def info_order(id_product, id_material):
 	
 	txt_0 = "Вы создали заявку на производство товара со следующими характеристиками:"
 	txt_1 = "Наименование товара: {}".format(name_prod)
-	txt_2 = "Размер товара: {}".format(size)
-	txt_3 = "Величина п/м: {}".format(p_m)
-	txt_4 = "Вид материала: {}".format(name_material)
+	txt_2 = "Вид материала: {}".format(name_material)
+	txt_3 = "Размер товара: {}".format(size)
+	txt_4 = "Величина п/м: {}".format(p_m)
 	txt = "{0}\n{1}\n{2}\n{3}\n{4}".format(txt_0, txt_1, txt_2, txt_3, txt_4)
 	
 	return txt
@@ -218,9 +258,12 @@ def in_process():
 	list_orders = db.list_orders("process")
 	db.close()
 	txt = "Товар в производстве:\n"
-	for item in list_orders:
-		txt += txt_order(item)
-		txt += "\n"
+	if list_orders != []:
+		for item in list_orders:
+			txt += txt_order(item)
+			txt += "\n"
+	else:
+		txt = "У вас нету ни одного товара в производстве"
 	return txt
 
 def txt_size():

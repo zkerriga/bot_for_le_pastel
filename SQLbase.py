@@ -118,6 +118,15 @@ class SQLbase():
 			self.cur.execute("UPDATE Orders SET status = ? WHERE id = ?", (process, order_id))
 			self.connection.commit()
 
+	def done_process(self, order_id):
+		"""
+		Change status on done
+		"""
+		done = 'done'
+		with self.connection:
+			self.cur.execute("UPDATE Orders SET status = ? WHERE id = ?", (done, order_id))
+			self.connection.commit()
+
 	#Unique table
 	def add_item_unique(self, column, value):
 		"""
