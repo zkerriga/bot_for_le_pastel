@@ -16,6 +16,8 @@ def keyboard(user_id):
 	add_material = "Добавить материал"
 	take_order = "Создать запрос"
 	done_order = "Завершить заказ"
+	add_textile = "Добавить ткань"
+	receive = "Отчёт"
 	txt = "Внизу у Вас появится меню"
 	#keyboard for adm
 	if user_id == config.adm_id_1 or config.adm_id_2:
@@ -23,6 +25,8 @@ def keyboard(user_id):
 		kb.add(request)
 		kb.add(add_material)
 		kb.add(take_order)
+		kb.add(add_textile)
+		kb.add(receive)
 		return kb, txt 
 	#keyboard for store
 	elif user_id == config.store_id:
@@ -100,7 +104,7 @@ def in_kb_product():
 	in_kb.add(button)
 	return in_kb, txt
 
-def in_kb_materials(id_product):
+def in_kb_materials(id_product, status):
 	"""
 	Create inline keyboard of all materials
 	"""
@@ -116,8 +120,13 @@ def in_kb_materials(id_product):
 				#item[2:] - name material
 				#item[:1] - id of a material
 				#id_product - picked product by store or abm
-				encode = "info {} {}".format(id_product, item[:1]) 
-				button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
+				if status == "order":
+					encode = "info {} {}".format(id_product, item[:1]) 
+					button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
+				elif status == "receive":
+					txt = "Выберите тип материала котороый хотите добавить для учёта"
+					encode = "receive {}".format(item[:1]) 
+					button = types.InlineKeyboardButton(text = item[2:], callback_data = encode)
 				in_kb.add(button)
 		else:
 			txt = "Не созданно не одного метриала. Администратор должен добавить вид материалов."
@@ -244,6 +253,7 @@ def to_process(order_id):
 	db = SQLbase(config.db)
 	db.to_process(order_id)
 	list_order = db.info_request(order_id)
+	db.remains(order_id)
 	db.close()
 	txt_0 = "Данный товар на производстве:"
 	txt_1 = txt_order(list_order)
@@ -335,4 +345,10 @@ def add_unique_order(id_material):
 	txt = "{0}\n{1}\n{2}\n{3}\n{4}".format(txt_0, txt_1, txt_2, txt_3, txt_4)
 
 	return txt
+
+def receive_info():
+	"""
+	Create a text about all receive and return a string
+	"""
+	pass
 

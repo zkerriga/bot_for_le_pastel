@@ -59,6 +59,33 @@ def add_material(message):
 	else:
 		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
 
+@bot.message_handler(commands = ['add_textile'])
+def add_textile(message):
+	"""
+	Let adm add new textile 
+	"""
+	#handle permissons for adm
+	user_id = message.from_user.id
+	if utils.perm_adm(user_id) == 1:
+		in_kb, txt = utils.in_kb_materials(0, "receive")
+		bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
+	else:
+		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
+
+@bot.message_handler(commands = ['receive'])
+def receive(message):
+	"""
+	Show to user info about all receive
+	"""
+	user_id = message.from_user.id
+	if utils.perm_adm(user_id) == 1:
+		db = SQLbase(config.db)
+		txt = db.get_receive()
+		db.close()
+		bot.send_message(message.chat.id, text = txt)
+	else:
+		bot.send_message(message.chat.id, text = "У Вас нету доступа к этой функции")
+
 @bot.message_handler(commands = ['shop_order'])
 def shop_order(message):
 	"""
@@ -129,6 +156,46 @@ def end_request(call):
 	elif len(call.data) == 6:#adm_no
 		bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = "Заявка не была допущенна на производство")
 
+@bot.callback_query_handler(lambda call: call.data[:7] == 'receive')
+def receive_material(call):
+	"""
+	show a in_kb of materials
+	"""
+	id_info = re.findall(r"\d+", call.data)
+	id_material = id_info[0]
+	db = SQLbase(config.db)
+	db.add_material_term_receive(id_material)
+	db.close()
+	worker_db.set_state(call.from_user.id, config.States.RECEIVE_P_M.value)
+	txt_1 = "Теперь напишите погонный метр(п.м.)"
+	txt_2 = "Пример: 50.30"
+	txt_3 = "Используйте '.'! Не верно: 50,30"
+	txt = "{}\n{}\n{}".format(txt_1, txt_2, txt_3)
+	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt)
+
+@bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.RECEIVE_P_M.value)
+def receive_p_m(message):
+	try:
+		p_m = float(message.text)
+	except:
+		p_m = None
+
+	if p_m == None:
+
+		txt = "Вы ввели не правильное число для п.м.! Используйте целое число(Например: 50) или число с точкой (Например: 50.30)"
+		bot.send_message(message.chat.id, text = txt)
+		return
+	else:
+		#add_p_m to table Unique_term
+		db = SQLbase(config.db)
+		db.add_p_m_term_receive(p_m)
+		id_material, p_m = db.term_receive_info() 
+		db.add_receive(p_m, id_material)
+		material = db.info_material(id_material)
+		db.close()
+		txt = "Вы добавили ткань материала: {}. И размером {} п.м.".format(material, p_m)
+		worker_db.set_state(message.chat.id, config.States.START.value)
+		bot.send_message(message.chat.id, text = txt)
 
 @bot.message_handler(func = lambda message: worker_db.get_current_state(message.chat.id) == config.States.SIZE.value)
 def write_size(message):
@@ -184,7 +251,7 @@ def pick_material(message):
 	"""
 	#7 - is id of a unique product
 	logging.info("In the UNIQUE_MATERIAL")
-	in_kb, txt = utils.in_kb_materials(7)
+	in_kb, txt = utils.in_kb_materials(7, "order")
 	bot.send_message(message.chat.id, text = txt, reply_markup = in_kb)
 	worker_db.set_state(message.chat.id, config.States.START.value)
 
@@ -224,7 +291,7 @@ def show_material(call):
 	"""
 	Let user pick up a type of a material
 	"""
-	in_kb, txt = utils.in_kb_materials(int(call.data))
+	in_kb, txt = utils.in_kb_materials(int(call.data), "order")
 	bot.edit_message_text(chat_id = call.message.chat.id, message_id = call.message.message_id, text = txt, reply_markup = in_kb)
 
 @bot.callback_query_handler(lambda call: int(call.data) >= 100)
@@ -253,7 +320,10 @@ def main(message):
 		take_order(message)
 	elif message.text == "Завершить заказ":
 		shop_order(message)
-	
+	elif message.text == "Добавить ткань":
+		add_textile(message)
+	elif message.text == "Отчёт":
+		receive(message)
 
 if __name__ == '__main__':
 	logging.basicConfig(level = logging.INFO)
